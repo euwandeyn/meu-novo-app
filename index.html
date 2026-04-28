@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stride • Task Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; color-scheme: dark; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #09090b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+        .task-appear { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .ai-bubble { animation: pulseSlow 4s infinite ease-in-out; }
+        @keyframes pulseSlow { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+        .priority-high { border-left: 4px solid #ef4444; }
+        .priority-medium { border-left: 4px solid #eab308; }
+        .priority-low { border-left: 4px solid #3f3f46; }
+        .exercise-card { transition: all 0.2s ease; }
+        .exercise-card:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body class="bg-black min-h-screen font-sans antialiased text-zinc-100 flex flex-col">
+
+    <!-- Tela de Carregamento -->
+    <div id="loading-screen" class="fixed inset-0 z-[110] bg-black flex flex-col items-center justify-center hidden transition-opacity duration-300">
+        <div class="w-12 h-12 border-4 border-zinc-800 border-t-white rounded-full animate-spin mb-4"></div>
+        <p class="text-zinc-500 font-bold tracking-widest text-[10px] uppercase">Carregando...</p>
+    </div>
+
+    <!-- Tela Inicial / Login -->
+    <div id="welcome-screen" class="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 transition-opacity duration-700">
+        <div class="max-w-sm w-full space-y-8 task-appear text-center">
+            <div class="space-y-2 mb-8">
+                <h1 class="text-6xl font-extrabold tracking-tighter text-white">Stride<span class="text-zinc-600">.</span></h1>
+                <p class="text-zinc-500 font-medium tracking-wide">ELEVE SUA PRODUTIVIDADE AO MÁXIMO</p>
+            </div>
+            
+            <div class="bg-zinc-900/30 border border-zinc-800/50 rounded-3xl p-8 backdrop-blur-sm">
+                <div id="auth-tabs" class="flex gap-4 mb-8 p-1 bg-black/40 rounded-xl">
+                    <button id="tab-login" data-auth="login" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all bg-white text-black">Login</button>
+                    <button id="tab-register" data-auth="register" class="flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-white">Cadastro</button>
+                </div>
+
+                <div id="form-login" class="auth-form space-y-4">
+                    <div class="space-y-1 text-left">
+                        <label class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold ml-2">E-mail</label>
+                        <input type="email" id="login-email" placeholder="seu@email.com" 
+                            class="w-full bg-black border border-zinc-800 text-white rounded-2xl px-5 py-3 focus:border-white outline-none transition-all text-sm">
+                    </div>
+                    <div class="space-y-1 text-left">
+                        <label class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold ml-2">Senha</label>
+                        <input type="password" id="login-pass" placeholder="••••••••" 
+                            class="w-full bg-black border border-zinc-800 text-white rounded-2xl px-5 py-3 focus:border-white outline-none transition-all text-sm">
+                    </div>
+                    <button type="button" id="btn-login" class="w-full py-4 bg-white text-black font-bold rounded-2xl hover:bg-zinc-200 transition-all active:scale-95 flex items-center justify-center gap-2 group mt-4">
+                        Entrar no Stride
+                        <i class="fas fa-sign-in-alt text-xs"></i>
+                    </button>
+
+                    <div class="flex items-center gap-4 my-4">
+                        <div class="h-[1px] bg-zinc-800 flex-1"></div>
+                        <span class="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">ou</span>
+                        <div class="h-[1px] bg-zinc-800 flex-1"></div>
+                    </div>
+
+                    <button type="button" id="btn-google-login" class="w-full py-4 bg-zinc-900 border border-zinc-800 text-white font-bold rounded-2xl hover:bg-zinc-800 transition-all active:scale-95 flex items-center justify-center gap-3">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5">
+                        Entrar com Google
+                    </button>
+                </div>
+
+                <div id="form-register" class="auth-form space-y-4 hidden">
+                    <div class="space-y-1 text-left">
+                        <label class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold ml-2">Nome Completo</label>
+                        <input type="text" id="reg-name" placeholder="Como quer ser chamado?" 
+                            class="w-full bg-black border border-zinc-800 text-white rounded-2xl px-5 py-3 focus:border-white outline-none transition-all text-sm">
+                    </div>
+                    <div class="space-y-1 text-left">
+                        <label class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold ml-2">E-mail</label>
+                        <input type="email" id="reg-email" placeholder="seu@email.com" 
+                            class="w-full bg-black border border-zinc-800 text-white rounded-2xl px-5 py-3 focus:border-white outline-none transition-all text-sm">
+                    </div>
+                    <div class="space-y-1 text-left">
+                        <label class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold ml-2">Senha</label>
+                        <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres" 
+                            class="w-full bg-black border border-zinc-800 text-white rounded-2xl px-5 py-3 focus:border-white outline-none transition-all text-sm">
+                    </div>
+                    <button type="button" id="btn-register" class="w-full py-4 bg-zinc-100 text-black font-bold rounded-2xl hover:bg-white transition-all active:scale-95 mt-4">
+                        Criar Conta Grátis
+                    </button>
+                </div>
+            </div>
+            <p class="text-[10px] text-zinc-700 uppercase tracking-[0.2em] font-bold mt-8">Design Minimalista • Foco Absoluto</p>
+        </div>
+    </div>
+
+    <!-- Aplicativo Principal -->
+    <div id="app-container" class="max-w-xl mx-auto px-6 py-12 w-full hidden opacity-0 transition-opacity duration-700">
+        <header class="mb-10">
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <div class="flex items-center gap-3 mb-1">
+                        <h1 class="text-4xl font-extrabold tracking-tight text-white">Stride<span class="text-zinc-600">.</span></h1>
+                    </div>
+                    <p class="text-zinc-500 text-sm font-medium uppercase tracking-wider" id="current-date"></p>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="text-right">
+                        <span id="completion-stats" class="text-2xl font-bold text-white">0/0</span>
+                        <p class="text-zinc-500 text-xs uppercase tracking-widest text-right">Concluídas</p>
+                    </div>
+                    <button id="btn-logout" class="text-zinc-500 hover:text-red-400 transition-colors" title="Sair da conta">
+                        <i class="fas fa-right-from-bracket text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="ai-insight" class="ai-bubble bg-zinc-900/30 border border-zinc-800/50 rounded-xl p-3 mb-6 flex items-start gap-3 transition-all">
+                <i class="fas fa-robot text-zinc-500 mt-1"></i>
+                <p id="ai-text" class="text-xs text-zinc-400 leading-relaxed font-medium tracking-tight flex-1">Analisando seu dia...</p>
+            </div>
+
+            <div class="w-full bg-zinc-900 h-1.5 rounded-full overflow-hidden mb-2">
+                <div id="progress-bar" class="bg-white h-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+            <p id="completion-phrase" class="text-zinc-500 text-xs font-medium italic">Você concluiu 0% dos seus afazeres.</p>
+
+            <div id="filter-container" class="flex gap-2 mt-8 overflow-x-auto pb-2 custom-scrollbar">
+                <button data-filter="Tudo" class="filter-btn bg-white text-black px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all">Tudo</button>
+                <button data-filter="Rotina" class="filter-btn bg-zinc-900 text-zinc-500 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all hover:text-white flex items-center gap-2">
+                    <i class="fas fa-house-user text-[10px]"></i> Rotina
+                </button>
+                <button data-filter="Trabalho" class="filter-btn bg-zinc-900 text-zinc-500 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all hover:text-white">Trabalho</button>
+                <button data-filter="Estudo" class="filter-btn bg-zinc-900 text-zinc-500 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all hover:text-white">Estudo</button>
+                <button data-filter="Academia" class="filter-btn bg-zinc-900 text-zinc-500 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all hover:text-white flex items-center gap-2">
+                    <i class="fas fa-dumbbell text-[10px]"></i> Academia
+                </button>
+            </div>
+        </header>
+
+        <div id="gym-advanced-section" class="hidden mb-8 task-appear">
+            <div class="bg-gradient-to-r from-zinc-900 to-black border border-zinc-800 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-black shadow-lg shadow-white/5">
+                        <i class="fas fa-dumbbell text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold">Painel Stride Fitness</h3>
+                        <p class="text-zinc-500 text-xs uppercase tracking-widest font-medium">183 Exercícios • Gestão Completa</p>
+                    </div>
+                </div>
+                <button id="btn-enter-gym" class="w-full sm:w-auto bg-white text-black text-[11px] font-extrabold px-6 py-3 rounded-xl hover:bg-zinc-200 transition-all active:scale-95 shadow-xl shadow-white/10">
+                    ACESSAR ÁREA PERSONAL <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <section>
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-semibold flex items-center gap-2">
+                    <span class="w-2 h-2 bg-zinc-400 rounded-full"></span>
+                    Suas Tarefas
+                </h2>
+                <button id="btn-open-modal" class="group flex items-center gap-2 text-sm bg-white text-black font-bold px-4 py-2 rounded-full hover:bg-zinc-200 transition-all active:scale-95">
+                    <i class="fas fa-plus text-xs"></i>
+                    Adicionar
+                </button>
+            </div>
+            <div id="task-list" class="grid gap-3"></div>
+        </section>
+    </div>
+
+    <!-- Modal para adicionar itens -->
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-zinc-900 rounded-2xl p-8 w-full max-w-sm border border-zinc-800 shadow-2xl transform transition-all">
+            <h3 class="text-xl font-bold mb-2 text-white">O que vamos focar agora?</h3>
+            <p class="text-zinc-500 text-sm mb-6">Defina uma tarefa clara e objetiva.</p>
+            
+            <input type="text" id="item-input" placeholder="O que você quer fazer?" 
+                   class="w-full bg-black border border-zinc-800 text-white rounded-xl px-4 py-3 mb-4 focus:border-zinc-500 outline-none transition-colors">
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-bold">Data (Opcional)</label>
+                    <input type="date" id="item-date" class="w-full bg-black border border-zinc-800 text-white rounded-xl px-4 py-2 focus:border-zinc-500 outline-none transition-colors text-sm">
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-bold">Hora (Opcional)</label>
+                    <input type="time" id="item-time" class="w-full bg-black border border-zinc-800 text-white rounded-xl px-4 py-2 focus:border-zinc-500 outline-none transition-colors text-sm">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-bold">Prioridade</label>
+                    <select id="item-priority" class="w-full bg-black border border-zinc-800 text-white rounded-xl px-4 py-2 focus:border-zinc-500 outline-none text-sm">
+                        <option value="low">Normal</option>
+                        <option value="medium">Importante</option>
+                        <option value="high">Urgente</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-bold">Categoria</label>
+                    <select id="item-category" class="w-full bg-black border border-zinc-800 text-white rounded-xl px-4 py-2 focus:border-zinc-500 outline-none text-sm">
+                        <option value="Pessoal">Pessoal</option>
+                        <option value="Rotina">Rotina</option>
+                        <option value="Trabalho">Trabalho</option>
+                        <option value="Estudo">Estudo</option>
+                        <option value="Academia">Academia</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button id="btn-close-modal" class="flex-1 px-4 py-3 bg-zinc-800 rounded-xl hover:bg-zinc-700 transition text-zinc-300 font-medium">Cancelar</button>
+                <button id="btn-save-item" class="flex-1 px-4 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Área Personal (Academia) -->
+    <div id="gym-modal" class="fixed inset-0 bg-black/95 hidden z-[70] overflow-y-auto custom-scrollbar transition-all duration-300">
+        <div class="min-h-screen p-4 md:p-8">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex justify-between items-center mb-8">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-black">
+                            <i class="fas fa-dumbbell text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-3xl font-extrabold text-white tracking-tighter">Área Personal</h2>
+                            <p class="text-zinc-500 text-[10px] uppercase tracking-widest font-bold">183 Exercícios • Performance & Treino</p>
+                        </div>
+                    </div>
+                    <button id="btn-close-gym" class="w-10 h-10 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center text-zinc-500 hover:text-white transition">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="flex gap-2 mb-8 bg-zinc-900/50 p-1 rounded-2xl border border-zinc-800/50 overflow-x-auto custom-scrollbar">
+                    <button data-gym-tab="exercises" class="gym-tab-btn flex-1 py-3 px-4 text-[10px] uppercase tracking-tighter font-extrabold rounded-xl transition-all bg-white text-black whitespace-nowrap">
+                        <i class="fas fa-list mr-2"></i> Exercícios
+                    </button>
+                    <button id="btn-gym-personal" class="flex-1 py-3 px-4 text-[10px] uppercase tracking-tighter font-extrabold rounded-xl transition-all text-zinc-500 hover:text-white whitespace-nowrap">
+                        <i class="fas fa-robot mr-2"></i> Personal AI
+                    </button>
+                    <button data-gym-tab="workouts" class="gym-tab-btn flex-1 py-3 px-4 text-[10px] uppercase tracking-tighter font-extrabold rounded-xl transition-all text-zinc-500 hover:text-white whitespace-nowrap">
+                        <i class="fas fa-calendar-check mr-2"></i> Treinos Montados
+                    </button>
+                </div>
+
+                <div id="gym-exercises" class="gym-view space-y-6 task-appear">
+                    <div class="flex gap-4 flex-wrap">
+                        <div class="relative flex-1 min-w-[200px]">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
+                            <input type="text" id="gym-search-exercise" placeholder="Buscar exercício..." class="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl pl-12 pr-4 py-3 text-sm focus:border-white outline-none">
+                        </div>
+                        <select id="gym-filter-muscle" class="bg-zinc-900 border border-zinc-800 text-white rounded-xl px-4 py-3 text-sm outline-none min-w-[150px]">
+                            <option value="todos">Todos Grupos</option>
+                        </select>
+                        <div class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm">
+                            <span class="text-zinc-500 text-xs font-bold" id="exercise-count">183</span>
+                            <span class="text-zinc-400">exercícios</span>
+                        </div>
+                    </div>
+                    
+                    <div id="gym-exercises-list" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+
+                <div id="gym-workouts" class="gym-view hidden space-y-6 task-appear">
+                    <div class="bg-zinc-900/30 border border-zinc-800 p-6 rounded-2xl">
+                        <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                            <h4 class="text-white font-bold uppercase tracking-widest text-sm">Treinos Montados</h4>
+                            <div class="flex gap-4 items-center flex-wrap">
+                                <input type="month" id="gym-history-month" class="bg-black border border-zinc-800 text-white rounded-lg px-3 py-1.5 text-xs outline-none">
+                                <button id="btn-clear-history" class="px-4 py-1.5 bg-red-900/30 border border-red-800/50 text-red-400 text-xs font-bold rounded-lg hover:bg-red-900 transition">
+                                    <i class="fas fa-trash-alt mr-1"></i> Limpar Tudo
+                                </button>
+                            </div>
+                        </div>
+                        <div id="gym-history-list" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Log de Exercício -->
+    <div id="gym-log-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-[80] backdrop-blur-sm">
+        <div class="bg-zinc-900 rounded-3xl p-8 w-full max-w-sm border border-zinc-800 shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-1" id="log-exercise-name">Supino Reto</h3>
+            <p class="text-zinc-500 text-xs uppercase font-bold tracking-widest mb-6" id="log-exercise-muscle">Peitoral</p>
+            
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <div class="space-y-1">
+                    <label class="text-[9px] uppercase font-bold text-zinc-500 tracking-widest">Séries</label>
+                    <input type="number" id="log-sets" value="3" min="1" max="20" class="w-full bg-black border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] uppercase font-bold text-zinc-500 tracking-widest">Reps</label>
+                    <input type="number" id="log-reps" value="12" min="1" max="100" class="w-full bg-black border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[9px] uppercase font-bold text-zinc-500 tracking-widest">Peso (kg)</label>
+                    <input type="number" id="log-weight" value="0" min="0" step="0.5" class="w-full bg-black border border-zinc-800 text-white rounded-xl px-3 py-2 text-sm outline-none">
+                </div>
+            </div>
+            <div class="space-y-1 mb-4">
+                <label class="text-[9px] uppercase font-bold text-zinc-500 tracking-widest">Dia do Treino</label>
+                <select id="log-day" class="w-full bg-black border border-zinc-800 text-white rounded-xl px-4 py-3 text-sm outline-none">
+                    <option value="Segunda">Segunda-feira</option>
+                    <option value="Terça">Terça-feira</option>
+                    <option value="Quarta">Quarta-feira</option>
+                    <option value="Quinta">Quinta-feira</option>
+                    <option value="Sexta">Sexta-feira</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
+                </select>
+            </div>
+            <div class="space-y-1 mb-6">
+                <label class="text-[9px] uppercase font-bold text-zinc-500 tracking-widest">Observações</label>
+                <input type="text" id="log-obs" placeholder="Foco na cadência..." class="w-full bg-black border border-zinc-800 text-white rounded-xl px-4 py-3 text-sm outline-none">
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-close-log" class="flex-1 px-4 py-3 bg-zinc-800 rounded-xl hover:bg-zinc-700 transition text-zinc-300 font-medium text-sm">Cancelar</button>
+                <button id="btn-save-log" class="flex-1 px-4 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition text-sm">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Chat com IA -->
+    <div id="chat-modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center p-4 z-[60] backdrop-blur-md">
+        <div class="bg-zinc-900 rounded-2xl w-full max-w-lg h-[600px] border border-zinc-800 shadow-2xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-robot text-white"></i>
+                    <span class="font-bold text-white">Personal Trainer AI</span>
+                    <span id="ai-status" class="bg-green-500/20 text-green-400 text-[9px] px-2 py-0.5 rounded font-bold uppercase">Conectando...</span>
+                </div>
+                <button id="btn-close-chat" class="text-zinc-500 hover:text-white transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/20">
+                <div class="bg-zinc-800/50 rounded-2xl p-3 text-sm text-zinc-300 max-w-[85%]">
+                    Olá! Sou seu Personal Trainer AI! 🏋️ Como posso te ajudar hoje?
+                </div>
+            </div>
+            <div class="p-4 bg-zinc-900 border-t border-zinc-800">
+                <div class="flex gap-2">
+                    <input type="text" id="chat-input" placeholder="Me pergunte sobre treinos..." 
+                           class="flex-1 bg-black border border-zinc-800 text-white rounded-xl px-4 py-2 focus:border-zinc-500 outline-none transition-colors text-sm">
+                    <button id="btn-send-chat" class="bg-white text-black p-2 rounded-xl hover:bg-zinc-200 transition">
+                        <i class="fas fa-paper-plane px-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module"> 
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc, deleteDoc, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app-check.js";
+        import { getDatabase, ref, set, onDisconnect, serverTimestamp as dbTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBdzF9P0pm13jfhYG7B1zX-9tACdm2ThPo",
+            authDomain: "stride-app-264d1.firebaseapp.com",
+            projectId: "stride-app-264d1",
+            storageBucket: "stride-app-264d1.firebasestorage.app",
+            messagingSenderId: "1041082674566",
+            appId: "1:1041082674566:web:e26ee4e175d3e8138ad007",
+            databaseURL: "https://stride-app-264d1-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const rtdb = getDatabase(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // ==================== GROQ API CONFIG (GRÁTIS) ====================
+        const GROQ_API_KEY = "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";
+        const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+        // ==================== SISTEMA DA IA PERSONAL TRAINER (PRESERVADO) ====================
+        const PERSONAL_TRAINER_SYSTEM = `Você é um Personal Trainer AI profissional e humano dentro do app Stride.
+
+Seu papel é ser como um PERSONAL TRAINER DE VERDADE - simpático, motivador, atencioso e muito profissional.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 ORIENTAÇÃO INICIAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quando o usuário iniciar a conversa, saude de forma calorosa e depois pergunte:
+
+"Olá! Que ótimo ter você aqui! Antes de montarmos seu treino perfeito, me conta: você quer um treino BÁSICO (mais simples e rápido) ou PROFISSIONAL (análise completa e treino personalizado)?"
+
+Aguarde a resposta do usuário.
+
+---
+
+Se o usuário escolher BÁSICO:
+1. Pergunte: "Quais dias da semana você vai treinar? (ex: Segunda, Quarta, Sexta)"
+2. Pergunte: "Qual seu objetivo? (hipertrofia, emagrecer, definição)"
+3. Monte o treino de forma direta.
+
+---
+
+Se o usuário escolher PROFISSIONAL:
+ENTÃO você DEVE fazer TODAS as perguntas abaixo, UMA POR VEZ, de forma natural e conversada:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PERGUNTAS DO PERSONAL PROFISSIONAL (NA ORDEM):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. "Primeiro, qual é o seu nome?"
+2. "Qual é o seu gênero? Masculino ou feminino?"
+3. "Qual é a sua idade?"
+4. "Qual é a sua altura? (em centímetros, ex: 175cm)"
+5. "Qual é o seu peso atual? (em kg)"
+6. "Você tem alguma meta de peso específica?"
+7. "Qual é o seu nível de experiência com treinos?"
+8. "Com qual frequência você treina atualmente?"
+9. "Qual é o seu objetivo principal?"
+10. "Tem alguma região do corpo que você quer focar mais?"
+11. "Você tem alguma lesão ou dor crônica?"
+12. "Como está sua alimentação?"
+13. "Quantas horas você dorme por noite?"
+14. "Com que frequência você GOSTARIA de treinar por semana?"
+15. "Quais dias da semana você vai treinar?"
+16. "Qual é o tempo ideal de treino para você?"
+17. "Você prefere treino mais: (A) Pesado, (B) Moderado, (C) Leve"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 FORMATO DO TREINO MONTADO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Use este formato OBRIGATÓRIO:
+
+[TREINO]
+nome: SEGUNDA - FOCO PEITO
+dia: Segunda
+exercicio: Supino Reto - séries: 4x10 - peso: 20kg
+exercicio: Supino Inclinado - séries: 3x12 - peso: 15kg
+exercicio: Crucifixo - séries: 3x12 - peso: 10kg
+exercicio: Tríceps Pulley - séries: 3x12 - peso: 15kg
+exercicio: Elevação Lateral - séries: 3x12 - peso: 8kg
+[/TREINO]
+
+REGRAS DO TREINO:
+* MÍNIMO 5 exercícios por treino
+* Número de treinos = número de dias que cliente escolheu
+* Seguir EXATAMENTE os dias do cliente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 APÓS MONTAR O TREINO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+* Parabenize o cliente pelo comprometimento
+* Dê dicas motivacionais
+* Lembre que o treino foi salvo automaticamente`;        
+
+        let chatHistory = [];
+        let aiConnected = false;
+
+        function speak(text) {
+            el('ai-text').innerText = text;
+        }
+
+        function updateAIStatus(status, color = 'green') {
+            const statusEl = el('ai-status');
+            if (statusEl) {
+                statusEl.innerText = status;
+                if (color === 'green') {
+                    statusEl.className = 'bg-green-500/20 text-green-400 text-[9px] px-2 py-0.5 rounded font-bold uppercase';
+                } else if (color === 'yellow') {
+                    statusEl.className = 'bg-yellow-500/20 text-yellow-400 text-[9px] px-2 py-0.5 rounded font-bold uppercase';
+                } else if (color === 'red') {
+                    statusEl.className = 'bg-red-500/20 text-red-400 text-[9px] px-2 py-0.5 rounded font-bold uppercase';
+                }
+            }
+        }
+
+        async function updateUserPresence(user) {
+            if (!user) return;
+            const userPresenceRef = ref(rtdb, `presence/users/${user.uid}`);
+            set(userPresenceRef, {
+                name: user.displayName || 'Usuário',
+                email: user.email || 'Sem email',
+                online: true,
+                lastSeen: dbTimestamp()
+            });
+            onDisconnect(userPresenceRef).remove();
+        }
+
+        function getNextDayOfWeek(dayName) {
+            const today = new Date();
+            const currentDayOfWeek = today.getDay();
+            const daysMap = {
+                "domingo": 0, "segunda": 1, "terça": 2, "quarta": 3,
+                "quinta": 4, "sexta": 5, "sábado": 6
+            };
+            const targetDayOfWeek = daysMap[dayName.toLowerCase()];
+            if (targetDayOfWeek === undefined) return null;
+            let daysUntilNext = targetDayOfWeek - currentDayOfWeek;
+            if (daysUntilNext <= 0) daysUntilNext += 7;
+            const nextDay = new Date(today);
+            nextDay.setDate(today.getDate() + daysUntilNext);
+            return nextDay;
+        }
+
+        function autoResetWorkouts() {
+            if (gymHistory.length === 0) return;
+            const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+            const hojeNome = diasSemana[new Date().getDay()];
+            const hojeDataStr = new Date().toLocaleDateString('pt-BR');
+            let mudou = false;
+            gymHistory.forEach(treino => {
+                if (treino.day && treino.finishedAt) {
+                    const dataFinalizado = new Date(treino.finishedAt).toLocaleDateString('pt-BR');
+                    if (hojeNome === "Segunda" && dataFinalizado !== hojeDataStr) {
+                        treino.finishedAt = null;
+                        mudou = true;
+                    }
+                }
+            });
+            if (mudou) saveGymHistory();
+        }
+
+        function saveAIWorkout(text) {
+            const regex = /\[TREINO\]([\s\S]*?)\[\/TREINO\]/g;
+            let match;
+            let savedAny = false;
+
+            while ((match = regex.exec(text)) !== null) {
+                try {
+                    const treinoBlock = match[1];
+                    let nomeTreino = 'Treino Personalizado';
+                    const nomeMatch = treinoBlock.match(/nome:\s*(.+)/i);
+                    if (nomeMatch) nomeTreino = nomeMatch[1].trim();
+
+                    const diaMatch = treinoBlock.match(/dia:\s*(.+)/i);
+                    const diaTreino = diaMatch ? diaMatch[1].trim() : null;
+
+                    const exercicios = [];
+                    const lines = treinoBlock.split('\n');
+                    
+                    lines.forEach(line => {
+                        if (line.includes('exercicio:')) {
+                            const exMatch = line.match(/exercicio:\s*(.+?)\s*-\s*séries?:\s*(\d+)\s*x\s*(\d+)\s*-\s*peso:\s*(\d+)kg/i);
+                            if (exMatch) {
+                                exercicios.push({
+                                    name: exMatch[1].trim(),
+                                    sets: exMatch[2],
+                                    reps: exMatch[3],
+                                    weight: exMatch[4],
+                                    muscle: 'Personalizado',
+                                    obs: '',
+                                    date: new Date().toISOString()
+                                });
+                            }
+                        }
+                    });
+
+                    if (exercicios.length > 0) {
+                        const newWorkout = {
+                            id: crypto.randomUUID(),
+                            date: new Date().toISOString(),
+                            exercises: exercicios,
+                            type: 'ai',
+                            name: nomeTreino,
+                            finishedAt: null,
+                            day: diaTreino
+                        };
+                        gymHistory.unshift(newWorkout);
+                        savedAny = true;
+                    }
+                } catch (e) { console.error("Erro ao processar treino da IA:", e); }
+            }
+
+            if (savedAny) saveGymHistory();
+            return savedAny;
+        }
+
+        // ==================== FUNÇÃO GROQ API (GRÁTIS) ====================
+        async function chatWithAI(userMessage) {
+            chatHistory.push({ role: "user", content: userMessage });
+            
+            try {
+                updateAIStatus('Pensando...', 'yellow');
+                
+                const response = await fetch(GROQ_API_URL, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${GROQ_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "system", content: PERSONAL_TRAINER_SYSTEM },
+                            ...chatHistory.map(msg => ({ 
+                                role: msg.role === "user" ? "user" : "assistant", 
+                                content: msg.content 
+                            }))
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2048,
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error("Erro Groq:", response.status, errorData);
+                    updateAIStatus('Erro', 'red');
+                    return `❌ Erro na API Groq (Código: ${response.status}). Verifique a chave de API.`;
+                }
+
+                const data = await response.json();
+                
+                if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+                    const aiResponse = data.choices[0].message.content;
+                    chatHistory.push({ role: "assistant", content: aiResponse });
+                    
+                    if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+                    
+                    aiConnected = true;
+                    updateAIStatus('Online', 'green');
+                    return aiResponse;
+                }
+                
+                updateAIStatus('Erro', 'red');
+                return "🤖 A IA não retornou uma resposta válida. Tente novamente.";
+
+            } catch (error) {
+                console.error("Erro na chamada:", error);
+                updateAIStatus('Erro', 'red');
+                return `📡 Erro de conexão: ${error.message}`;
+            }
+        }
+
+        initializeAppCheck(app, {
+            provider: new ReCaptchaV3Provider('SUA_SITE_KEY_DO_RECAPTCHA'),
+            isTokenAutoRefreshEnabled: true
+        });
+
+        let tasks = [];
+        let currentUser = null;
+        let unsubscribeTasks = null;
+        let currentFilter = 'Tudo';
+
+        // ==================== BANCO DE EXERCÍCIOS COMPLETO (183 EXERCÍCIOS) ====================
+        const gymExercisesData = {
+            Peitoral: [
+                "Supino Reto", "Supino Inclinado", "Supino Declinado", "Supino Reto com Halteres",
+                "Supino Inclinado com Halteres", "Supino Máquina", "Supino Smith", "Crucifixo",
+                "Crucifixo Inclinado", "Crucifixo Máquina (Pec Deck)", "Crossover", "Chest Press",
+                "Voador Máquina", "Pullover", "Flexão de Braço", "Flexão Inclinada",
+                "Flexão Diamante", "Flexão Fechada"
+            ],
+            Costas: [
+                "Puxada Frontal", "Puxada Aberta", "Puxada Fechada", "Puxada Unilateral", "Pulldown",
+                "Remada Curvada", "Remada Unilateral", "Remada Articulada", "Remada Baixa",
+                "Remada Alta", "Barra Fixa", "Barra Fixa Ajudada", "Levantamento Terra",
+                "Pulley Frontal", "Pulley Costas", "Hiperextensão", "Good Morning",
+                "Remada no Cabo", "Pulley Corda", "Barra Fixa Supinada", "Pulldown Atras",
+                "Row Station", "Tração"
+            ],
+            Pernas: [
+                "Agachamento Livre", "Agachamento Smith", "Agachamento Frontal", "Agachamento Bulgaro",
+                "Agachamento Sumo", "Agachamento Goblet", "Agachamento Isométrico", "Leg Press",
+                "Leg Press 45°", "Cadeira Extensora", "Mesa Flexora", "Mesa Flexora Sentado",
+                "Panturrilha em Pé", "Panturrilha Sentado", "Panturrilha Smith", "Panturrilha no Leg Press",
+                "Abdutor", "Adutor", "Glúteo 4 Apoios", "Hip Thrust", "Stiff", "Leg Curl",
+                "Leg Extension", "Afundo", "Avanço (Lunge)", "Step Up", "Cadeira Abdutora",
+                "Cadeira Adutora", "Extensão de Quadril", "Flexão de Panturrilha", "Adutor de Quadril",
+                "Abductor de Quadril", "Ponte Glútea", "Bulgarian Split Squat", "Leg Press Inclinado"
+            ],
+            Ombros: [
+                "Desenvolvimento", "Desenvolvimento Máquina", "Desenvolvimento com Halteres",
+                "Desenvolvimento Arnold", "Desenvolvimento Smith", "Elevação Lateral",
+                "Elevação Lateral no Cabo", "Elevação Frontal", "Elevação Frontal Alternada",
+                "Crucifixo Lateral", "Face Pull", "Rear Delt Fly", "Crucifixo Inverso",
+                "Encolhimento", "Encolhimento Trapézio", "Press Militar", "Elevação Posterior",
+                "Elevação Lateral no Smith", "Desenvolvimento no Cabo", "Crucifixo na Máquina"
+            ],
+            Bíceps: [
+                "Rosca Direta", "Rosca Martelo", "Rosca Alternada", "Rosca Concentrada",
+                "Rosca Scott", "Rosca Predador", "Rosca 21", "Rosca no Cabo",
+                "Rosca Martelo Alternada", "Rosca com Barra", "Rosca com Halteres",
+                "Rosca Invertida", "Rosca Flexora", "Rosca no Paralelas", "Rosca Unilateral"
+            ],
+            Tríceps: [
+                "Tríceps Pulley", "Tríceps Pulley Corda", "Tríceps Testa", "Tríceps Corda",
+                "Tríceps Francês", "Tríceps Máquina", "Mergulho", "Mergulho Paralelas",
+                "Mergulho Banco", "Extensão Halteres", "Tríceps Testa Halteres",
+                "Tríceps Pulley Inverso", "Extensão no Cabo", "Tríceps no Paralelas", "Skull Crusher"
+            ],
+            Abdômen: [
+                "Abdominal Supra", "Abdominal Infra", "Abdominal Oblíquo", "Abdominal Scissor",
+                "Abdominal Bicycle", "Prancha", "Prancha Lateral", "Elevação de Pernas",
+                "Elevação de Pernas Suspensa", "Abdominal na Máquina", "Abdominal Parallelas",
+                "Crunch", "Crunch na Máquina", "Abdominal Cabo", "V-Ups", "Hollow Man",
+                "Abdominal Remador", "Rotação de Tronco", "Russian Twist", "Abdominal Isométrico"
+            ],
+            Glúteos: [
+                "Hip Thrust", "Hip Thrust Máquina", "Stiff", "Stiff Máquina",
+                "Levantamento Terra Sumo", "Glúteos no Cabo", "Ponte", "Ponte Máquina",
+                "Glúteo 4 Apoios", "Glúteos no Smith", "Abdução de Quadril",
+                "Cadeira Abdutora", "Ponte Glútea", "Glúteos no Cabo Unilateral", "Hip Thrust Unilateral"
+            ],
+            Antebraço: [
+                "Flexor de Pulso", "Extensor de Pulso", "Rotação de Pulso",
+                "Flexor de Pulso Martelo", "Extensor de Pulso Martelo",
+                "Flexor de Pulso Inclinado", "Extensor de Pulso Inclinado",
+                "Wrist Roller", "Pronação e Supinação", "Flexor de Pulso no Cabo"
+            ],
+            Cardio: [
+                "Esteira", "Bike", "Elíptico", "Pular Corda", "Remo (Ergômetro)",
+                "Escada (Stairmaster)", "Spinning", "Jump Rope", "Burpee",
+                "Polichinelos", "Box Jump", "Battle Ropes"
+            ]
+        };
+
+        const totalExercises = Object.values(gymExercisesData).reduce((acc, arr) => acc + arr.length, 0);
+
+        let gymHistory = [];
+        try {
+            const stored = localStorage.getItem('stride_gym_history');
+            gymHistory = stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            gymHistory = [];
+        }
+        const saveGymHistory = () => localStorage.setItem('stride_gym_history', JSON.stringify(gymHistory));
+        
+        let sessionTimeout = null;
+
+        function resetSessionTimer() {
+            clearTimeout(sessionTimeout);
+            sessionTimeout = setTimeout(() => {
+                if (currentUser) {
+                    alert("Sua sessão expirou por inatividade. Faça login novamente.");
+                    signOut(auth);
+                }
+            }, 30 * 60 * 1000);
+        }
+
+        function initSessionTimer() {
+            const events = ['click', 'scroll', 'keypress', 'touchstart'];
+            events.forEach(event => {
+                document.addEventListener(event, resetSessionTimer, { passive: true });
+            });
+            resetSessionTimer();
+        }
+
+        let storedNotified;
+        try {
+            storedNotified = JSON.parse(localStorage.getItem('stride_notified'));
+        } catch (e) {
+            storedNotified = [];
+        }
+        let notifiedTasks = new Set(Array.isArray(storedNotified) ? storedNotified : []);
+        const saveNotified = () => localStorage.setItem('stride_notified', JSON.stringify([...notifiedTasks]));
+
+        const el = (id) => document.getElementById(id);
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function validateEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function isOverdue(task) {
+            if (!task.dueDate || task.completed) return false;
+            const taskDeadline = new Date(`${task.dueDate}T${task.dueTime || '23:59'}`);
+            if (isNaN(taskDeadline.getTime())) return false;
+            return taskDeadline < new Date();
+        }
+
+        function renderAll() {
+            const filtered = currentFilter === 'Tudo' 
+                ? tasks 
+                : tasks.filter(t => t.category === currentFilter);
+            renderList('task-list', filtered);
+            updateStats();
+        }
+
+        function switchAuthTab(tab) {
+            const isLogin = tab === 'login';
+            el('form-login').classList.toggle('hidden', !isLogin);
+            el('form-register').classList.toggle('hidden', isLogin);
+            el('tab-login').className = isLogin 
+                ? 'flex-1 py-2 text-sm font-bold rounded-lg transition-all bg-white text-black'
+                : 'flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-white';
+            el('tab-register').className = !isLogin 
+                ? 'flex-1 py-2 text-sm font-bold rounded-lg transition-all bg-white text-black'
+                : 'flex-1 py-2 text-sm font-bold rounded-lg transition-all text-zinc-500 hover:text-white';
+        }
+
+        async function handleRegister() {
+            const name = el('reg-name').value.trim();
+            const email = el('reg-email').value.trim();
+            const pass = el('reg-pass').value.trim();
+            
+            if (!name || name.length < 2) return alert("Nome inválido. Mínimo 2 caracteres.");
+            if (!validateEmail(email)) return alert("E-mail inválido.");
+            if (pass.length < 6) return alert("Senha muito fraca. Mínimo 6 caracteres.");
+            
+            el('loading-screen').classList.remove('hidden');
+            const sanitizedName = escapeHtml(name);
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+                await updateProfile(userCredential.user, { displayName: sanitizedName });
+            } catch (error) {
+                el('loading-screen').classList.add('hidden');
+                const friendlyMessages = {
+                    'auth/email-already-in-use': 'Este e-mail já está em uso.',
+                    'auth/invalid-email': 'E-mail inválido.',
+                    'auth/weak-password': 'Senha muito fraca.',
+                    'auth/network-request-failed': 'Erro de conexão. Verifique sua internet.',
+                    'auth/operation-not-allowed': 'O registro com e-mail não está habilitado.'
+                };
+                alert(friendlyMessages[error.code] || 'Erro no cadastro. Tente novamente.');
+            }
+        }
+
+        async function handleLogin() {
+            const email = el('login-email').value.trim();
+            const pass = el('login-pass').value.trim();
+            
+            if (!validateEmail(email)) return alert("E-mail inválido.");
+            if (pass.length < 6) return alert("Senha inválida.");
+
+            const now = Date.now();
+            if (window.lastLoginAttempt && now - window.lastLoginAttempt < 30000 && (window.loginAttempts || 0) >= 3) {
+                return alert("Muitas tentativas. Aguarde 30 segundos.");
+            }
+
+            window.lastLoginAttempt = now;
+            window.loginAttempts = (window.loginAttempts || 0) + 1;
+            el('loading-screen').classList.remove('hidden');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                window.loginAttempts = 0;
+            } catch (error) {
+                el('loading-screen').classList.add('hidden');
+                el('login-email').value = ''; el('login-pass').value = '';
+                const friendlyMessages = {
+                    'auth/user-not-found': 'Usuário não encontrado.',
+                    'auth/wrong-password': 'Senha incorreta.',
+                    'auth/invalid-email': 'E-mail inválido.',
+                    'auth/too-many-requests': 'Muitas tentativas. Aguarde.',
+                    'auth/invalid-credential': 'Credenciais inválidas.',
+                    'auth/network-request-failed': 'Erro de conexão.'
+                };
+                alert(friendlyMessages[error.code] || 'Erro ao fazer login. Tente novamente.');
+            }
+        }
+
+        async function handleGoogleLogin() {
+            try {
+                el('loading-screen').classList.remove('hidden');
+                await signInWithPopup(auth, googleProvider);
+            } catch (error) {
+                el('loading-screen').classList.add('hidden');
+                if (error.code === 'auth/operation-not-allowed') {
+                    alert("ERRO: O login com Google não está ativado.\n\nVá em Authentication > Sign-in method e ative o Google.");
+                } else if (error.code !== 'auth/popup-closed-by-user') {
+                    if (location.protocol === 'file:') {
+                        alert("ERRO: O login do Google não funciona abrindo o arquivo direto.\n\nUse um servidor local.");
+                    } else {
+                        alert("Erro ao entrar com Google: " + error.message);
+                    }
+                }
+            }
+        }
+
+        function handleLogout() { signOut(auth); }
+
+        const formatFirebaseDate = (date) => {
+            if (!date) return null;
+            try {
+                if (typeof date.toDate === 'function') return date.toDate().toISOString();
+                const d = new Date(date);
+                return isNaN(d.getTime()) ? null : d.toISOString();
+            } catch (e) {
+                return null;
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                startApp();
+                syncTasks();
+                updateUserPresence(user);
+            } else {
+                currentUser = null;
+                if (unsubscribeTasks) unsubscribeTasks();
+                el('loading-screen').classList.add('hidden');
+                el('welcome-screen').classList.remove('hidden', 'opacity-0');
+                el('app-container').classList.add('hidden');
+            }
+        });
+
+        function syncTasks() {
+            const q = query(
+                collection(db, "users", currentUser.uid, "tasks"),
+                orderBy("createdAt", "desc")
+            );
+            unsubscribeTasks = onSnapshot(q, (snapshot) => {
+                tasks = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return { 
+                        id: doc.id, 
+                        ...data, 
+                        createdAt: formatFirebaseDate(data.createdAt),
+                        completedAt: formatFirebaseDate(data.completedAt)
+                    };
+                });
+                renderAll();
+            });
+        }
+
+        function startApp() {
+            const welcome = el('welcome-screen');
+            const app = el('app-container');
+            welcome.classList.add('opacity-0');
+            setTimeout(() => {
+                welcome.classList.add('hidden');
+                app.classList.remove('hidden');
+                setTimeout(() => {
+                    app.classList.remove('opacity-0');
+                    el('loading-screen').classList.add('hidden');
+                    speak(`Bem-vindo, ${currentUser.displayName}. Vamos organizar suas metas de hoje?`);
+                    initSessionTimer();
+                }, 50);
+            }, 700);
+        }
+
+        function getRelativeTimeString(date, prefix = 'criada há ') {
+            if (!date) return "";
+            const now = new Date();
+            const past = new Date(date);
+            if (isNaN(past.getTime())) return "";
+            
+            const diffInSeconds = Math.max(0, Math.floor((now - past) / 1000));
+            if (diffInSeconds < 60) return `${prefix}${diffInSeconds}s`;
+            const diffInMinutes = Math.floor(diffInSeconds / 60);
+            if (diffInMinutes < 60) return `${prefix}${diffInMinutes}min`;
+            const diffInHours = Math.floor(diffInMinutes / 60);
+            if (diffInHours < 24) return `${prefix}${diffInHours}h`;
+            const diffInDays = Math.floor(diffInHours / 24);
+            return `${prefix}${diffInDays}d`;
+        }
+
+        function sendNotification(title, body) {
+            if (!("Notification" in window)) return;
+            if (Notification.permission === "granted") {
+                try {
+                    new Notification(title, { body });
+                } catch (e) {
+                    console.error("Erro notificação:", e);
+                }
+            }
+        }
+
+        function checkNotifications() {
+            if (!currentUser) return;
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+            let pendingTodayCount = 0;
+
+            tasks.forEach(task => {
+                if (task.completed || !task.dueDate) return;
+                const taskDeadline = new Date(`${task.dueDate}T${task.dueTime || '23:59'}`);
+                if (isNaN(taskDeadline.getTime())) return;
+                const diffMs = taskDeadline - now;
+                if (diffMs > 0 && diffMs <= 3600000 && !notifiedTasks.has(task.id)) {
+                    sendNotification("Stride: Lembrete de Prazo", `A tarefa "${task.title}" vence em menos de 1 hora!`);
+                    notifiedTasks.add(task.id);
+                    saveNotified();
+                }
+                if (task.dueDate === todayStr) pendingTodayCount++;
+            });
+
+            if (pendingTodayCount > 0 && !notifiedTasks.has('daily-summary')) {
+                setTimeout(() => {
+                    sendNotification("Resumo do Dia", `Você tem ${pendingTodayCount} tarefas pendentes para hoje.`);
+                    speak(`${currentUser.displayName}, você tem ${pendingTodayCount} compromissos hoje.`);
+                    notifiedTasks.add('daily-summary');
+                    saveNotified();
+                }, 2000);
+            }
+        }
+
+        function openChat() {
+            el('chat-modal').classList.remove('hidden');
+            el('chat-input').focus();
+            chatHistory = [];
+            updateAIStatus('Verificando...', 'yellow');
+            testAIConnection();
+        }
+
+        async function testAIConnection() {
+            try {
+                const response = await fetch(GROQ_API_URL, {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${GROQ_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [{ role: "user", content: "Oi" }],
+                        max_tokens: 10
+                    })
+                });
+                
+                if (response.ok) {
+                    updateAIStatus('Online', 'green');
+                    aiConnected = true;
+                } else {
+                    updateAIStatus('Erro API', 'red');
+                    aiConnected = false;
+                }
+            } catch (error) {
+                updateAIStatus('Sem Conexão', 'red');
+                aiConnected = false;
+            }
+        }
+
+        function closeChat() { 
+            el('chat-modal').classList.add('hidden');
+            el('chat-messages').innerHTML = `
+                <div class="bg-zinc-800/50 rounded-2xl p-3 text-sm text-zinc-300 max-w-[85%]">
+                    Olá! Sou seu Personal Trainer AI! 🏋️ Como posso te ajudar hoje?
+                </div>
+            `;
+            el('chat-input').value = '';
+            chatHistory = [];
+        }
+
+        function setCategoryFilter(category) {
+            currentFilter = category;
+            el('gym-advanced-section').classList.toggle('hidden', category !== 'Academia');
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                const isActive = btn.innerText.includes(category);
+                btn.classList.toggle('bg-white', isActive);
+                btn.classList.toggle('text-black', isActive);
+                btn.classList.toggle('bg-zinc-900', !isActive);
+                btn.classList.toggle('text-zinc-500', !isActive);
+            });
+            renderAll();
+        }
+
+        function openGymModal() {
+            el('gym-modal').classList.remove('hidden');
+            switchGymTab('exercises');
+        }
+
+        function switchGymTab(tabId) {
+            document.querySelectorAll('.gym-view').forEach(v => v.classList.add('hidden'));
+            el(`gym-${tabId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.gym-tab-btn').forEach(btn => {
+                const isActive = btn.getAttribute('data-gym-tab') === tabId;
+                btn.className = isActive 
+                    ? 'gym-tab-btn flex-1 py-3 px-4 text-[10px] uppercase tracking-tighter font-extrabold rounded-xl transition-all bg-white text-black whitespace-nowrap'
+                    : 'gym-tab-btn flex-1 py-3 px-4 text-[10px] uppercase tracking-tighter font-extrabold rounded-xl transition-all text-zinc-500 hover:text-white whitespace-nowrap';
+            });
+
+            if (tabId === 'exercises') renderGymExercises();
+            if (tabId === 'workouts') renderGymWorkouts();
+        }
+
+        function renderGymExercises() {
+            const filterGroup = el('gym-filter-muscle').value;
+            const searchTerm = el('gym-search-exercise').value.toLowerCase();
+            const container = el('gym-exercises-list');
+            
+            let all = [];
+            Object.entries(gymExercisesData).forEach(([group, list]) => {
+                if (filterGroup === 'todos' || filterGroup === group) {
+                    list.forEach(name => {
+                        if (name.toLowerCase().includes(searchTerm)) all.push({ name, group });
+                    });
+                }
+            });
+
+            el('exercise-count').innerText = all.length;
+
+            container.innerHTML = all.map(ex => `
+                <div class="exercise-card bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex justify-between items-center hover:border-zinc-700 cursor-pointer">
+                    <div class="flex-1 min-w-0">
+                        <h5 class="text-sm font-bold text-white truncate">${ex.name}</h5>
+                        <span class="text-[9px] text-zinc-500 uppercase font-bold tracking-widest">${ex.group}</span>
+                    </div>
+                    <button data-action="log-gym" data-name="${escapeHtml(ex.name)}" data-group="${ex.group}" class="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition ml-2 flex-shrink-0">
+                        <i class="fas fa-plus text-xs"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function openLogExercise(name, group) {
+            el('log-exercise-name').innerText = name;
+            el('log-exercise-muscle').innerText = group;
+            
+            const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+            const hojeNome = diasSemana[new Date().getDay()];
+            el('log-day').value = hojeNome;
+            el('gym-log-modal').classList.remove('hidden');
+        }
+
+        function saveExerciseLog() {
+            const log = {
+                name: el('log-exercise-name').innerText,
+                muscle: el('log-exercise-muscle').innerText,
+                sets: el('log-sets').value,
+                reps: el('log-reps').value,
+                weight: el('log-weight').value,
+                obs: el('log-obs').value,
+                date: new Date().toISOString()
+            };
+            
+            gymHistory.unshift({
+                id: crypto.randomUUID(),
+                date: log.date,
+                exercises: [log],
+                type: 'avulso',
+                name: 'Exercício Avulso',
+                finishedAt: null,
+                day: el('log-day').value
+            });
+            saveGymHistory();
+            el('gym-log-modal').classList.add('hidden');
+            alert("Exercício registrado!");
+            switchGymTab('workouts');
+        }
+
+        function renderGymWorkouts() {
+            const container = el('gym-history-list');
+            if (gymHistory.length === 0) {
+                container.innerHTML = `<p class="text-center py-8 text-zinc-600 text-xs italic">Nenhum treino registrado ainda.</p>`;
+                return;
+            }
+
+            const sortedHistory = [...gymHistory].sort((a, b) => {
+                const aFinished = a.finishedAt ? 1 : 0;
+                const bFinished = b.finishedAt ? 1 : 0;
+                if (aFinished !== bFinished) return aFinished - bFinished;
+                return new Date(b.date) - new Date(a.date);
+            });
+
+            container.innerHTML = sortedHistory.map(training => {
+                const d = new Date(training.date);
+                const finishedAt = training.finishedAt ? new Date(training.finishedAt) : null;
+                const isAI = training.type === 'ai';
+
+                let resetInfoHtml = '';
+                if (isAI && training.day && !finishedAt) {
+                    const nextResetDate = getNextDayOfWeek(training.day);
+                    if (nextResetDate) {
+                        const formattedDay = nextResetDate.toLocaleDateString('pt-BR', { weekday: 'long' });
+                        resetInfoHtml = `<span class="text-[9px] text-zinc-500 block mt-1 tracking-tight">Agendado para: ${formattedDay}</span>`;
+                    }
+                } else if (finishedAt) {
+                    resetInfoHtml = `
+                        <span class="text-[9px] text-red-500 font-bold flex items-center gap-1 mt-1 uppercase tracking-tighter">
+                            <i class="fas fa-triangle-exclamation"></i> Reinicia na próxima Segunda
+                        </span>
+                    `;
+                }
+
+                return `
+                    <div class="bg-black border ${isAI ? 'border-green-900/50' : 'border-zinc-800'} p-4 rounded-xl">
+                        <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                            <div>
+                                <span class="text-[10px] text-zinc-500 font-bold uppercase block">${training.name || 'Treino'} ${training.day ? `• ${training.day}` : ''}</span>
+                                <span class="text-[9px] text-zinc-600 block">${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</span>
+                                ${resetInfoHtml}
+                            </div>
+                            <span class="text-[9px] ${isAI ? 'bg-green-900/30 text-green-400' : 'bg-zinc-900 text-zinc-400'} px-2 py-0.5 rounded font-extrabold uppercase">
+                                ${isAI ? 'IA' : 'Manual'}
+                            </span>
+                        </div>
+                        <div class="space-y-1 mb-4">
+                            ${training.exercises.map(ex => `
+                                <p class="text-xs text-zinc-300"><strong class="text-white">${ex.name}</strong> • ${ex.sets}x${ex.reps} (${ex.weight}kg)</p>
+                            `).join('')}
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                            ${!finishedAt ? `
+                                <button data-action="finish-workout" data-id="${training.id}" class="flex-[3] py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] font-bold uppercase rounded-lg hover:bg-white hover:text-black transition">
+                                    <i class="fas fa-check-double mr-1"></i> Finalizar
+                                </button>
+                            ` : ''}
+                            <button data-action="delete-gym-history" data-id="${training.id}" class="flex-1 py-2 bg-zinc-900 border border-zinc-800 text-red-500/70 text-[10px] font-bold uppercase rounded-lg hover:bg-red-500 hover:text-white transition">
+                                <i class="fas fa-trash-alt mr-1"></i> Excluir
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function finishWorkout(id) {
+            const index = gymHistory.findIndex(t => t.id === id);
+            if (index !== -1) {
+                gymHistory[index].finishedAt = new Date().toISOString();
+                saveGymHistory();
+                renderGymWorkouts();
+                speak("Treino finalizado com sucesso. Bom descanso!");
+            }
+        }
+
+        function deleteGymHistoryItem(id) {
+            if (!confirm("Tem certeza que deseja excluir este registro?")) return;
+            const index = gymHistory.findIndex(t => t.id === id);
+            if (index !== -1) {
+                gymHistory.splice(index, 1);
+                saveGymHistory();
+                renderGymWorkouts();
+            }
+        }
+
+        function clearAllGymHistory() {
+            if (!confirm("Tem certeza que deseja EXCLUIR TODOS os treinos? Esta ação não pode ser desfeita.")) return;
+            gymHistory = [];
+            saveGymHistory();
+            renderGymWorkouts();
+            speak("Histórico de treinos limpo.");
+        }
+
+        function formatAIResponse(text) {
+            let formatted = text.replace(/\[\/?TREINO\]/gi, '');
+            formatted = formatted.replace(/\bexercicio:\s*(.+?)\s*-\s*séries?:\s*(\d+\s*x\s*\d+)\s*-\s*peso:\s*(\d+)kg/gi, '<br>• $1 - $2 ($3kg)');
+            formatted = formatted.replace(/\bnome:\s*(.*)/gi, '<br><strong class="text-zinc-100 font-bold tracking-tight">🏋️ $1</strong>');
+            formatted = formatted.replace(/\b(tipo|dia|objetivo|foco|horario|dias):\s*(.*)/gi, '');
+
+            return formatted
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white">$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        async function sendChatMessage() {
+            const input = el('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            const safeMessage = message.slice(0, 500);
+            appendMessage('user', safeMessage);
+            input.value = '';
+
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'bg-zinc-800/50 rounded-2xl p-3 text-sm text-zinc-400 max-w-[85%]';
+            thinkingDiv.innerHTML = 'Pensando... 🤔';
+            document.getElementById('chat-messages').appendChild(thinkingDiv);
+            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+
+            try {
+                const response = await chatWithAI(safeMessage);
+                thinkingDiv.remove();
+                appendMessage('ai', response);
+
+                const saved = saveAIWorkout(response);
+                if (saved) {
+                    setTimeout(() => {
+                        const confirmDiv = document.createElement('div');
+                        confirmDiv.className = 'bg-green-900/30 border border-green-700/50 rounded-2xl p-3 text-sm text-green-400 max-w-[85%]';
+                        confirmDiv.innerHTML = '✅ Treino salvo automaticamente em "Treinos Montados"!';
+                        document.getElementById('chat-messages').appendChild(confirmDiv);
+                        document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+                    }, 500);
+                }
+            } catch (error) {
+                thinkingDiv.remove();
+                console.error("Erro ao enviar mensagem:", error);
+                appendMessage('ai', "❌ Ocorreu um erro inesperado. Tente novamente!");
+            }
+        }
+
+        function appendMessage(sender, text) {
+            const container = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            if (sender === 'user') {
+                msgDiv.className = 'ml-auto bg-white text-black rounded-2xl p-3 text-sm max-w-[85%] font-medium';
+            } else {
+                msgDiv.className = 'bg-zinc-800/50 rounded-2xl p-3 text-sm text-zinc-300 max-w-[85%]';
+            }
+            
+            if (sender === 'ai') {
+                msgDiv.innerHTML = DOMPurify.sanitize(formatAIResponse(escapeHtml(text)));
+            } else {
+                msgDiv.textContent = text;
+            }
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function analyzeProgress(total, completed) {
+            const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+            if (total === 0) return "Sua lista está limpa. Que tal planejar o seu progresso agora?";
+            if (percent === 100) return "Incrível! Você dominou o seu dia.";
+            if (percent >= 75) return "Quase lá! Foco total para finalizar.";
+            if (percent >= 50) return "Metade do caminho! Ritmo excelente.";
+            if (percent > 0) return `Bom começo. ${percent}% concluídos.`;
+            const urgent = tasks.find(t => t.priority === 'high' && !t.completed);
+            if (urgent) return `${currentUser.displayName}, você tem uma URGENTE: "${urgent.title}".`;
+            if (total > 5) return "Muitas tarefas. Use o Modo Foco.";
+            return "Lista atualizada. Vamos progredir!";
+        }
+
+        async function saveItem() {
+            const input = el('item-input');
+            const title = input.value.trim();
+            
+            if (!title) return alert("Digite uma tarefa.");
+            if (title.length > 200) return alert("Máximo 200 caracteres.");
+            
+            const sanitizedTitle = escapeHtml(title);
+            try {
+                await addDoc(collection(db, "users", currentUser.uid, "tasks"), {
+                    title: sanitizedTitle,
+                    completed: false,
+                    createdAt: serverTimestamp(),
+                    dueDate: el('item-date').value,
+                    dueTime: el('item-time').value,
+                    priority: el('item-priority').value,
+                    category: el('item-category').value,
+                    subtasks: []
+                });
+                el('modal').classList.add('hidden');
+                input.value = '';
+                speak("Nova tarefa registrada. Vamos focar!");
+            } catch (e) {
+                alert("Erro ao salvar. Tente novamente.");
+            }
+        }
+
+        async function toggleItem(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            const isCompleting = !task.completed;
+            await updateDoc(doc(db, "users", currentUser.uid, "tasks", id), {
+                completed: isCompleting,
+                completedAt: isCompleting ? serverTimestamp() : null
+            });
+            if(isCompleting) speak("Excelente! Menos um item na lista.");
+        }
+
+        async function deleteItem(id) {
+            await deleteDoc(doc(db, "users", currentUser.uid, "tasks", id));
+        }
+
+        function init() {
+            if ("Notification" in window && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+
+            autoResetWorkouts();
+
+            const updateClock = () => {
+                const now = new Date();
+                const datePart = now.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
+                const timePart = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                el('current-date').innerText = `${datePart} • ${timePart}`;
+                document.querySelectorAll('.relative-time').forEach(item => {
+                    item.innerText = getRelativeTimeString(item.getAttribute('data-time'));
+                });
+                document.querySelectorAll('.completed-time').forEach(item => {
+                    item.innerText = getRelativeTimeString(item.getAttribute('data-time'), 'finalizada há ');
+                });
+            };
+            updateClock();
+            setInterval(updateClock, 1000);
+            checkNotifications();
+            setInterval(checkNotifications, 60000);
+
+            document.addEventListener('click', (e) => {
+                const target = e.target.closest('[data-action], [data-auth], [data-filter], [data-gym-tab], button[id], #ai-insight');
+                if (!target) return;
+
+                const action = target.getAttribute('data-action');
+                const id = target.getAttribute('data-id');
+
+                if (target.hasAttribute('data-auth')) switchAuthTab(target.getAttribute('data-auth'));
+                if (target.id === 'btn-login') handleLogin();
+                if (target.id === 'btn-google-login') handleGoogleLogin();
+                if (target.id === 'btn-register') handleRegister();
+                if (target.id === 'btn-logout') handleLogout();
+                if (target.hasAttribute('data-filter')) setCategoryFilter(target.getAttribute('data-filter'));
+
+                if (action) {
+                    if (['toggle', 'delete'].includes(action) && id) {
+                        if (action === 'toggle') toggleItem(id);
+                        if (action === 'delete') deleteItem(id);
+                    }
+                }
+
+                if (target.id === 'btn-open-modal') { el('modal').classList.remove('hidden'); el('item-input').focus(); }
+                if (target.id === 'btn-close-modal') el('modal').classList.add('hidden');
+                if (target.id === 'btn-save-item') saveItem();
+
+                if (target.id === 'btn-close-chat') closeChat();
+                if (target.id === 'btn-send-chat') sendChatMessage();
+                
+                if (target.id === 'btn-enter-gym') openGymModal();
+                if (target.id === 'btn-close-gym') el('gym-modal').classList.add('hidden');
+                if (target.id === 'btn-gym-personal') {
+                    el('gym-modal').classList.add('hidden');
+                    openChat();
+                }
+                if (target.hasAttribute('data-gym-tab')) switchGymTab(target.getAttribute('data-gym-tab'));
+                if (target.id === 'btn-close-log') el('gym-log-modal').classList.add('hidden');
+                if (target.id === 'btn-save-log') saveExerciseLog();
+                if (target.id === 'btn-clear-history') clearAllGymHistory();
+                
+                if (action === 'log-gym') {
+                    const name = target.getAttribute('data-name');
+                    const group = target.getAttribute('data-group');
+                    openLogExercise(name, group);
+                }
+                if (action === 'finish-workout' && id) finishWorkout(id);
+                if (action === 'delete-gym-history' && id) deleteGymHistoryItem(id);
+            });
+
+            el('gym-filter-muscle').innerHTML = '<option value="todos">Todos Grupos</option>' + Object.keys(gymExercisesData).map(g => `<option value="${g}">${g} (${gymExercisesData[g].length})</option>`).join('');
+            el('gym-search-exercise').addEventListener('input', renderGymExercises);
+            el('gym-filter-muscle').addEventListener('change', renderGymExercises);
+
+            document.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    if (!el('modal').classList.contains('hidden')) saveItem();
+                    if (!el('chat-modal').classList.contains('hidden')) sendChatMessage();
+                    if (!el('welcome-screen').classList.contains('hidden')) handleLogin();
+                }
+            });
+        }
+
+        function updateStats() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+            
+            document.getElementById('completion-stats').innerText = `${completed}/${total}`;
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+            document.getElementById('completion-phrase').innerText = `Você concluiu ${percent}% dos seus afazeres.`;
+            
+            const insight = analyzeProgress(total, completed);
+            document.getElementById('ai-text').innerText = insight;
+        }
+
+        function renderList(elementId, tasksToRender) {
+            const container = el(elementId);
+            if (tasksToRender.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center py-12 text-zinc-600">
+                        <i class="fas fa-feather-pointed text-3xl mb-3"></i>
+                        <p class="text-sm italic">Sua lista está limpa. Hora de progredir!</p>
+                    </div>`;
+                return;
+            }
+            const html = tasksToRender.map(item => {
+                const overdue = isOverdue(item);
+                const safeId = escapeHtml(item.id);
+                const safeTitle = escapeHtml(item.title || "");
+                const safeCategory = escapeHtml(item.category || "Geral");
+                const safeDueDate = item.dueDate ? escapeHtml(item.dueDate.split('-').reverse().join('/')) : '';
+
+                return `
+                <div class="task-appear flex items-center gap-4 p-5 bg-zinc-900/50 rounded-2xl border ${overdue ? 'border-red-900/30 bg-red-900/5' : 'border-zinc-900'} shadow-sm transition-all hover:border-zinc-800 hover:bg-zinc-900 priority-${item.priority || 'low'}">
+                    <button data-action="toggle" data-id="${safeId}" 
+                        class="w-6 h-6 rounded-full border flex items-center justify-center transition-all duration-300
+                        ${item.completed ? 'bg-white border-white text-black' : 'border-zinc-700'}">
+                        ${item.completed ? '<i class="fas fa-check text-[10px]"></i>' : ''}
+                    </button>
+                    
+                    <span class="flex-1 flex flex-col ${item.completed ? 'line-through text-zinc-600' : (overdue ? 'text-red-400' : 'text-zinc-200')}">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium">${safeTitle}</span>
+                            <span class="text-[8px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase font-bold tracking-tighter">${safeCategory}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                            <span class="relative-time text-[9px] text-zinc-500 font-medium uppercase tracking-wider" data-time="${item.createdAt}">
+                                ${getRelativeTimeString(item.createdAt)}
+                            </span>
+                            ${item.completed && item.completedAt ? `
+                                <span class="completed-time text-[9px] text-green-500 font-bold uppercase tracking-wider" data-time="${item.completedAt}">
+                                    ${getRelativeTimeString(item.completedAt, 'finalizada há ')}
+                                </span>
+                            ` : ''}
+                            ${item.dueDate ? `
+                                <span class="text-[9px] ${overdue ? 'text-red-500 font-bold' : 'text-zinc-500'} flex items-center gap-1 font-medium uppercase tracking-wider">
+                                    <i class="far fa-calendar text-[8px] ${overdue ? 'text-red-500' : ''}"></i>
+                                    ${overdue ? 'Atrasada: ' : 'Prazo: '} ${safeDueDate} 
+                                    ${item.dueTime ? ' às ' + item.dueTime : ''}
+                                </span>
+                            ` : ''}
+                        </div>
+                    </span>
+                    <div class="flex items-center gap-3">
+                        <button data-action="delete" data-id="${safeId}" class="text-zinc-600 hover:text-red-500 transition">
+                            <i class="fas fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+            `;}).join('');
+            container.innerHTML = DOMPurify.sanitize(html);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
